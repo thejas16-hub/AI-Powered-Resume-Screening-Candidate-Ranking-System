@@ -25,7 +25,7 @@ if 'current_job' not in st.session_state:
     st.session_state.current_job = None
 
 # Helper functions
-def make_api_request(endpoint, method="GET", data=None, requires_auth=True):
+def make_api_request(endpoint, method="GET", data=None, requires_auth=True, form_data=False):
     """Make API request to backend."""
     headers = {}
     if requires_auth and st.session_state.access_token:
@@ -37,7 +37,10 @@ def make_api_request(endpoint, method="GET", data=None, requires_auth=True):
         if method == "GET":
             response = requests.get(url, headers=headers, params=data)
         elif method == "POST":
-            response = requests.post(url, headers=headers, json=data)
+            if form_data:
+                response = requests.post(url, headers=headers, data=data)
+            else:
+                response = requests.post(url, headers=headers, json=data)
         elif method == "PUT":
             response = requests.put(url, headers=headers, json=data)
         elif method == "DELETE":
@@ -67,7 +70,8 @@ with st.sidebar:
                     "/auth/token",
                     method="POST",
                     data={"username": username, "password": password},
-                    requires_auth=False
+                    requires_auth=False,
+                    form_data=True
                 )
 
                 if response and "access_token" in response:

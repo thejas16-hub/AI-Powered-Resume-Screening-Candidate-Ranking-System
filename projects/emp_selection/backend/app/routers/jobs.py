@@ -4,14 +4,26 @@ from typing import List, Optional
 
 from app.auth import get_current_active_user, get_current_admin_user
 from app.database import get_db
-from app.models import User, Job, ResumeBatch, CandidateScore
-from app.schemas import JobCreate, JobUpdate, Job, ResumeBatch, CandidateScoreWithResume
+from app.models import (
+    User,
+    Job as JobModel,
+    Resume as ResumeModel,
+    ResumeBatch as ResumeBatchModel,
+    CandidateScore,
+)
+from app.schemas import (
+    JobCreate,
+    JobUpdate,
+    Job as JobSchema,
+    ResumeBatch as ResumeBatchSchema,
+    CandidateScoreWithResume,
+)
 
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 
-@router.post("/", response_model=Job, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=JobSchema, status_code=status.HTTP_201_CREATED)
 def create_job(
     job_data: JobCreate,
     current_user: User = Depends(get_current_active_user),
@@ -28,7 +40,7 @@ def create_job(
         )
 
     # Create new job
-    db_job = Job(
+    db_job = JobModel(
         **job_data.model_dump(),
         creator_id=current_user.id
     )
@@ -38,7 +50,7 @@ def create_job(
     return db_job
 
 
-@router.get("/", response_model=List[Job])
+@router.get("/", response_model=List[JobSchema])
 def get_jobs(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
@@ -49,20 +61,20 @@ def get_jobs(
     """
     Get list of jobs with pagination.
     """
-    query = db.query(Job)
+    query = db.query(JobModel)
 
     if active_only:
-        query = query.filter(Job.is_active == True)
+        query = query.filter(JobModel.is_active == True)
 
     # Admin users can see all jobs, regular users only see active ones
     if not current_user.is_admin:
-        query = query.filter(Job.is_active == True)
+        query = query.filter(JobModel.is_active == True)
 
     jobs = query.offset(skip).limit(limit).all()
     return jobs
 
 
-@router.get("/{job_id}", response_model=Job)
+@router.get("/{job_id}", response_model=JobSchema)
 def get_job(
     job_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -71,7 +83,7 @@ def get_job(
     """
     Get a specific job by ID.
     """
-    job = db.query(Job).filter(Job.id == job_id).first()
+    job = db.query(JobModel).filter(JobModel.id == job_id).first()
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -88,7 +100,7 @@ def get_job(
     return job
 
 
-@router.put("/{job_id}", response_model=Job)
+@router.put("/{job_id}", response_model=JobSchema)
 def update_job(
     job_id: int,
     job_data: JobUpdate,
@@ -105,7 +117,7 @@ def update_job(
             detail="Only admin users can update jobs"
         )
 
-    job = db.query(Job).filter(Job.id == job_id).first()
+    job = db.query(JobModel).filter(JobModel.id == job_id).first()
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -131,7 +143,7 @@ def delete_job(
     """
     Delete a job (soft delete - sets is_active to False).
     """
-    job = db.query(Job).filter(Job.id == job_id).first()
+    job = db.query(JobModel).filter(JobModel.id == job_id).first()
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -143,7 +155,7 @@ def delete_job(
     db.commit()
 
 
-@router.post("/{job_id}/activate", response_model=Job)
+@router.post("/{job_id}/activate", response_model=JobSchema)
 def activate_job(
     job_id: int,
     current_user: User = Depends(get_current_admin_user),
@@ -152,7 +164,7 @@ def activate_job(
     """
     Activate a deactivated job.
     """
-    job = db.query(Job).filter(Job.id == job_id).first()
+    job = db.query(JobModel).filter(JobModel.id == job_id).first()
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -165,7 +177,7 @@ def activate_job(
     return job
 
 
-@router.get("/{job_id}/batches", response_model=List[ResumeBatch])
+@router.get("/{job_id}/batches", response_model=List[ResumeBatchSchema])
 def get_job_batches(
     job_id: int,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
@@ -177,7 +189,7 @@ def get_job_batches(
     Get resume batches for a specific job.
     """
     # Check if job exists
-    job = db.query(Job).filter(Job.id == job_id).first()
+    job = db.query(JobModel).filter(JobModel.id == job_id).first()
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -192,9 +204,9 @@ def get_job_batches(
         )
 
     batches = (
-        db.query(ResumeBatch)
-        .filter(ResumeBatch.job_id == job_id)
-        .order_by(ResumeBatch.created_at.desc())
+        db.query(ResumeBatchModel)
+        .filter(ResumeBatchModel.job_id == job_id)
+        .order_by(ResumeBatchModel.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
@@ -216,7 +228,7 @@ def get_job_candidates(
     Get ranked candidates for a specific job with filtering options.
     """
     # Check if job exists
-    job = db.query(Job).filter(Job.id == job_id).first()
+    job = db.query(JobModel).filter(JobModel.id == job_id).first()
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -317,7 +329,7 @@ def get_job_statistics(
     Get statistics for a job.
     """
     # Check if job exists
-    job = db.query(Job).filter(Job.id == job_id).first()
+    job = db.query(JobModel).filter(JobModel.id == job_id).first()
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -340,8 +352,8 @@ def get_job_statistics(
 
     # Get batch count
     batch_count = (
-        db.query(ResumeBatch)
-        .filter(ResumeBatch.job_id == job_id)
+        db.query(ResumeBatchModel)
+        .filter(ResumeBatchModel.job_id == job_id)
         .count()
     )
 
@@ -385,7 +397,7 @@ def recalculate_scores(
     from app.services.scorer import scorer
 
     # Check if job exists
-    job = db.query(Job).filter(Job.id == job_id).first()
+    job = db.query(JobModel).filter(JobModel.id == job_id).first()
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -393,10 +405,10 @@ def recalculate_scores(
         )
 
     # Get all resumes for this job through batches
-    batches = db.query(ResumeBatch).filter(ResumeBatch.job_id == job_id).all()
+    batches = db.query(ResumeBatchModel).filter(ResumeBatchModel.job_id == job_id).all()
     resume_ids = []
     for batch in batches:
-        resumes = db.query(Resume).filter(Resume.batch_id == batch.id).all()
+        resumes = db.query(ResumeModel).filter(ResumeModel.batch_id == batch.id).all()
         resume_ids.extend([resume.id for resume in resumes])
 
     # Get all candidate scores for this job
@@ -407,7 +419,7 @@ def recalculate_scores(
     )
 
     # Get resumes for scoring
-    resumes = db.query(Resume).filter(Resume.id.in_(resume_ids)).all()
+    resumes = db.query(ResumeModel).filter(ResumeModel.id.in_(resume_ids)).all()
 
     # Recalculate scores
     ranked_results = scorer.rank_candidates(job, resumes, candidate_scores)
