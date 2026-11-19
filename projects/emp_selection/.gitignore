@@ -1,0 +1,14 @@
+
+# Local secrets
+.env
+docker-compose.yml
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local data and OS files
+*.db
+.DS_Store

@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic[email]
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+pymupdf
+python-docx
+spacy
+regex
+sentence-transformers
+scikit-learn
+pandas
+openpyxl
+streamlit
